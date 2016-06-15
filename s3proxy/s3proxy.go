@@ -8,8 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"s3envoy/caches"
 	"s3envoy/loadArgs"
+	"s3envoy/queues"
 	"strings"
 	"sync"
 	"time"
@@ -22,7 +22,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var cache *caches.Queue
+var lru *queues.Queue
 
 var mutex = &sync.Mutex{}
 
@@ -88,7 +88,7 @@ func s3Upload(bucketName string, fkey string, localFname string, dirPath string,
 func s3Get(w http.ResponseWriter, r *http.Request, fkey string, bucketName string, dirPath string) {
 	fname := localPath + fkey
 	mutex.Lock()
-	node, avail := cache.Retrieve(fkey)
+	node, avail := lru.Retrieve(fkey)
 	mutex.Unlock()
 
 	if avail == false {
@@ -100,11 +100,11 @@ func s3Get(w http.ResponseWriter, r *http.Request, fkey string, bucketName strin
 				log.Fatal(err)
 			}
 			mutex.Lock()
-			cache.Add(bucketName, dirPath, fkey, numBytes, true, d)
+			lru.Add(bucketName, dirPath, fkey, numBytes, true, d)
 			mutex.Unlock()
 		} else {
 			mutex.Lock()
-			cache.Add(bucketName, dirPath, fkey, numBytes, false, nil)
+			lru.Add(bucketName, dirPath, fkey, numBytes, false, nil)
 			mutex.Unlock()
 		}
 		http.ServeFile(w, r, fname)
@@ -163,11 +163,11 @@ func s3Put(w http.ResponseWriter, r *http.Request, fkey string, bucketName strin
 			log.Fatal(err)
 		}
 		mutex.Lock()
-		cache.Add(bucketName, fkey, dirPath, numBytes, true, d)
+		lru.Add(bucketName, fkey, dirPath, numBytes, true, d)
 		mutex.Unlock()
 	} else {
 		mutex.Lock()
-		cache.Add(bucketName, fkey, dirPath, numBytes, false, nil)
+		lru.Add(bucketName, fkey, dirPath, numBytes, false, nil)
 		mutex.Unlock()
 	}
 	//wait for s3 upload to finish
@@ -199,7 +199,7 @@ func main() {
 	diskCap = args.DiskCap
 	maxMemFileSize = args.MaxMemFileSize
 
-	cache = caches.InitializeQueue(totalFiles, memCap, diskCap)
+	lru = queues.InitializeQueue(totalFiles, memCap, diskCap)
 	router := mux.NewRouter() //.StrictSlash(true)
 	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fkey:[a-zA-Z0-9-\\.]*$}", s3GetHandler).Methods("GET")
 	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fkey:[a-zA-Z0-9-\\.]*$}", s3PutHandler).Methods("PUT")
