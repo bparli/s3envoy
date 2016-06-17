@@ -16,6 +16,9 @@ type Args struct {
 	MemCap         int64
 	DiskCap        int64
 	MaxMemFileSize int64
+	Peers          []string
+	LocalName      string
+	Cluster        bool
 }
 
 type argsInput struct {
@@ -24,6 +27,12 @@ type argsInput struct {
 	MemCap         string `json:"MemCap"`
 	DiskCap        string `json:"DiskCap"`
 	MaxMemFileSize string `json:"MaxMemFileSize"`
+	LocalName      string `json:"LocalName"`
+	Cluster        string `json:"cluster"`
+	Nodes          struct {
+		Peer1 string `json:"Node1"`
+		Peer2 string `json:"Node2"`
+	} `json:"Nodes"`
 }
 
 //Load function to load config file and return struct with args
@@ -41,6 +50,8 @@ func Load() *Args {
 	var memCap string
 	var diskCap string
 	var maxMemFileSize string
+	var peers []string
+	var cluster bool
 
 	if args.LocalPath == "" {
 		localPath = "/Users/bparli/tmp"
@@ -76,8 +87,17 @@ func Load() *Args {
 	}
 	maxMemFileSize2, _ := bytefmt.ToBytes(maxMemFileSize)
 
+	if args.Cluster == "" || args.Cluster == "False" {
+		cluster = false
+		peers = []string{}
+	} else {
+		cluster = true
+		peers = []string{args.Nodes.Peer1, args.Nodes.Peer2}
+	}
+
 	new := &Args{LocalPath: localPath,
 		TotalFiles: totalFiles, MemCap: int64(memCap2),
-		DiskCap: int64(diskCap2), MaxMemFileSize: int64(maxMemFileSize2)}
+		DiskCap: int64(diskCap2), MaxMemFileSize: int64(maxMemFileSize2),
+		Peers: peers, LocalName: args.LocalName, Cluster: cluster}
 	return new
 }

@@ -8,11 +8,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"s3envoy/hashes"
 	"s3envoy/loadArgs"
 	"s3envoy/queues"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -23,28 +23,7 @@ import (
 )
 
 var lru *queues.Queue
-
 var mutex = &sync.Mutex{}
-
-var localPath string
-var totalFiles int
-var memCap int64
-var diskCap int64
-var maxMemFileSize int64 //max file size to be cached in mem
-
-type s3Resp struct {
-	AcceptRanges  string    `json:"AcceptRanges"`
-	Body          string    `json:"Body"`
-	ContentLength int       `json:"ContentLength"`
-	ETag          string    `json:"ETag"`
-	LastModified  time.Time `json:"LastModified"`
-	Metadata      string    `json:"Metadata"`
-}
-
-type jsonReq struct {
-	bucketName string
-	fkey       string
-}
 
 func s3Download(bucketName string, fkey string, fname string, dirName string) (file *os.File, numBytes int64) {
 	file, _ = os.Create(fname)
@@ -85,8 +64,8 @@ func s3Upload(bucketName string, fkey string, localFname string, dirPath string,
 	fmt.Printf("file uploaded to s3, %s \n", resp)
 }
 
-func s3Get(w http.ResponseWriter, r *http.Request, fkey string, bucketName string, dirPath string) {
-	fname := localPath + fkey
+func s3Get(w http.ResponseWriter, r *http.Request, fkey string, bucketName string, dirPath string, args *loadArgs.Args) {
+	fname := args.LocalPath + fkey
 	mutex.Lock()
 	node, avail := lru.Retrieve(fkey)
 	mutex.Unlock()
@@ -94,7 +73,7 @@ func s3Get(w http.ResponseWriter, r *http.Request, fkey string, bucketName strin
 	if avail == false {
 		fmt.Println("File not in local FS, download from S3")
 		file, numBytes := s3Download(bucketName, fkey, fname, dirPath)
-		if numBytes < maxMemFileSize { //if small enough then add to memory
+		if numBytes < args.MaxMemFileSize { //if small enough then add to memory
 			d, err := ioutil.ReadAll(file)
 			if err != nil {
 				log.Fatal(err)
@@ -121,29 +100,23 @@ func s3Get(w http.ResponseWriter, r *http.Request, fkey string, bucketName strin
 	fmt.Printf("Request for %s in %s of size \n", fkey, bucketName)
 }
 
-func s3GetHandler(w http.ResponseWriter, r *http.Request) {
+func s3GetHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) {
 	vars := mux.Vars(r)
 	fkey := vars["fkey"]
 	bucket := vars["bucket"]
 	splits := strings.SplitN(bucket, "/", 2)
 	bucketName := splits[0]
 	dirPath := splits[1]
-	s3Get(w, r, fkey, bucketName, dirPath)
+	s3Get(w, r, fkey, bucketName, dirPath, args)
 }
-
-// func s3GetJSONHandler(w http.ResponseWriter, r *http.Request) {
-// 	req := new(jsonReq)
-// 	json.NewDecoder(r.Body).Decode(req)
-// 	s3Get(w, r, req.fkey, req.bucketName)
-// }
 
 func uploader(bucketName string, fkey string, fname string, dirPath string, numBytes int64, id int, results chan<- int) {
 	s3Upload(bucketName, fkey, fname, dirPath, numBytes)
 	results <- 1
 }
 
-func s3Put(w http.ResponseWriter, r *http.Request, fkey string, bucketName string, dirPath string) {
-	localFname := localPath + fkey
+func s3Put(w http.ResponseWriter, r *http.Request, fkey string, bucketName string, dirPath string, args *loadArgs.Args) {
+	localFname := args.LocalPath + fkey
 	file, _ := os.Create(localFname)
 
 	numBytes, err := io.Copy(file, r.Body)
@@ -157,7 +130,7 @@ func s3Put(w http.ResponseWriter, r *http.Request, fkey string, bucketName strin
 	go uploader(bucketName, fkey, localFname, dirPath, numBytes, 1, results)
 
 	//add to local file queue
-	if numBytes < maxMemFileSize { //if small enough then add to memory too
+	if numBytes < args.MaxMemFileSize { //if small enough then add to memory too
 		d, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Fatal(err)
@@ -175,38 +148,31 @@ func s3Put(w http.ResponseWriter, r *http.Request, fkey string, bucketName strin
 	fmt.Fprintf(w, "File uploaded successfully : ")
 }
 
-func s3PutHandler(w http.ResponseWriter, r *http.Request) {
+func s3PutHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) {
 	vars := mux.Vars(r)
 	fkey := vars["fkey"]
 	bucket := vars["bucket"]
 	splits := strings.SplitN(bucket, "/", 2)
 	bucketName := splits[0]
 	dirPath := splits[1]
-	s3Put(w, r, fkey, bucketName, dirPath)
+	s3Put(w, r, fkey, bucketName, dirPath, args)
 }
-
-// func s3PutJSONHandler(w http.ResponseWriter, r *http.Request) {
-// 	req := new(jsonReq)
-// 	json.NewDecoder(r.Body).Decode(req)
-// 	s3Put(w, r, req.fkey, req.bucketName, dirPath)
-// }
 
 func main() {
 	args := loadArgs.Load()
-	localPath = args.LocalPath
-	totalFiles = args.TotalFiles
-	memCap = args.MemCap
-	diskCap = args.DiskCap
-	maxMemFileSize = args.MaxMemFileSize
 
-	lru = queues.InitializeQueue(totalFiles, memCap, diskCap)
+	hashes.InitGH(args)
+	lru = queues.InitializeQueue(args.TotalFiles, args.MemCap, args.DiskCap)
 	router := mux.NewRouter() //.StrictSlash(true)
-	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fkey:[a-zA-Z0-9-\\.]*$}", s3GetHandler).Methods("GET")
-	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fkey:[a-zA-Z0-9-\\.]*$}", s3PutHandler).Methods("PUT")
-	//router.HandleFunc("/{bucket}/{fkey}", s3GetHandler).Methods("GET")
-	//router.HandleFunc("/{bucket}/{fkey}", s3PutHandler).Methods("PUT")
-	//router.HandleFunc("/get", s3GetJSONHandler)
-	//router.HandleFunc("/put", s3PutJSONHandler)
+	// router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fkey:[a-zA-Z0-9-\\.]*$}", s3GetHandler, args).Methods("GET")
+	// router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fkey:[a-zA-Z0-9-\\.]*$}", s3PutHandler, args).Methods("PUT")
+	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fkey:[a-zA-Z0-9-\\.]*$}", func(w http.ResponseWriter, r *http.Request) {
+		s3GetHandler(w, r, args)
+	}).Methods("GET")
+
+	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fkey:[a-zA-Z0-9-\\.]*$}", func(w http.ResponseWriter, r *http.Request) {
+		s3PutHandler(w, r, args)
+	}).Methods("PUT")
 
 	http.ListenAndServe(":8080", router)
 }

@@ -3,6 +3,8 @@ package queues
 import (
 	"fmt"
 	"os"
+	"s3envoy/hashes"
+	"s3envoy/loadArgs"
 	"time"
 )
 
@@ -30,12 +32,14 @@ type Queue struct {
 	currMem    int64 //current storage size in bytes
 	head       *Node
 	tail       *Node
+	args       *loadArgs.Args //program arguments
 }
 
 //InitializeQueue global LRU
-func InitializeQueue(cap int, maxMem int64, maxDisk int64) *Queue {
+func InitializeQueue(cap int, maxMem int64, maxDisk int64, args *loadArgs.Args) *Queue {
 	new := &Queue{totalFiles: cap, currFiles: 0, diskCap: maxDisk, currDisk: 0,
-		memCap: maxMem, currMem: 0, head: nil, tail: nil}
+		memCap: maxMem, currMem: 0, head: nil, tail: nil,
+		args: args}
 	return new
 }
 
@@ -74,6 +78,9 @@ func (lru *Queue) evict() {
 	lru.currMem += currT.size
 	lru.currDisk += currT.size
 
+	hashes.Lhash.Lock.Lock()
+	delete(hashes.Lhash.Hash, currT.Bucket+currT.dirPath+currT.Fname) //remove from local hash table
+	hashes.Lhash.Lock.Unlock()
 	return
 }
 
@@ -109,7 +116,7 @@ func (lru *Queue) moveToHead(move *Node) {
 	return
 }
 
-//Add missing file to global LRU
+//Add missing file to LRU
 func (lru *Queue) Add(bucket string, dirPath string, fname string, size int64, inmem bool, data []byte) (*Node, error) {
 	//add node to LRU queue and evict if already full
 	_, queued := lru.Retrieve(fname)
@@ -136,7 +143,14 @@ func (lru *Queue) Add(bucket string, dirPath string, fname string, size int64, i
 		} else {
 			break
 		}
+
 	}
+	hashes.Lhash.Lock.Lock()
+	hashes.Lhash.Hash[bucket+dirPath+fname] = 1 //add to local hash table
+	hashes.Lhash.Lock.Unlock()
+
+	//go hashes.UpdatePeers(peers, fkey, bucketName, localName)
+
 	if lru.currFiles == 0 {
 		lru.head = new
 		lru.tail = new
