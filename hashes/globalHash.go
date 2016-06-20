@@ -1,6 +1,10 @@
 package hashes
 
 import (
+	"bytes"
+	"encoding/json"
+	"log"
+	"net/http"
 	"s3envoy/loadArgs"
 	"sync"
 )
@@ -21,7 +25,8 @@ func InitGH(args *loadArgs.Args) {
 	Ghash = &Gh{Hash: newHash, Mutex: &sync.RWMutex{}, args: args}
 }
 
-func (h *Gh) addToGH(fkey string, bucket string, peer string) {
+//AddToGH adds a new record to the GH
+func (h *Gh) AddToGH(fkey string, bucket string, peer string, send bool) {
 	h.Mutex.Lock()
 	p, ok := h.Hash[peer]
 	if !ok {
@@ -30,12 +35,16 @@ func (h *Gh) addToGH(fkey string, bucket string, peer string) {
 	}
 	p[bucket+fkey] = 1
 	h.Mutex.Unlock()
+
+	go h.sendUpdates(fkey, bucket, true)
 }
 
-func (h *Gh) removeFromGH(fkey string, bucket string, peer string) {
+//RemoveFromGH updates the GH table with the eviction
+func (h *Gh) RemoveFromGH(fkey string, bucket string, peer string, send bool) {
 	h.Mutex.Lock()
 	delete(h.Hash[peer], bucket+fkey)
 	h.Mutex.Unlock()
+	go h.sendUpdates(fkey, bucket, false)
 }
 
 //CheckGH to check if fkey is in any peer's store
@@ -50,4 +59,21 @@ func (h *Gh) CheckGH(fkey string, bucket string) string {
 	}
 	h.Mutex.RUnlock()
 	return "None"
+}
+
+//SendUpdates will update all peers on a new entry to the local cache
+func (h *Gh) sendUpdates(fkey string, bucket string, update bool) {
+	upd := HashUpdate{peer: h.args.LocalName, bucketName: bucket, fkey: fkey, update: update}
+	data, errM := json.Marshal(upd)
+	if errM != nil {
+		log.Fatal(errM)
+	}
+	buff := bytes.NewBuffer(data)
+
+	for peer := range h.Hash {
+		_, errReq := http.NewRequest("POST", peer, buff)
+		if errReq != nil {
+			log.Fatal(errReq)
+		}
+	}
 }

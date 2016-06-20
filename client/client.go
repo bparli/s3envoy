@@ -41,8 +41,9 @@ func getWork(line string) {
 
 func worker(id int, results chan<- int) {
 	fmt.Printf("Worker  Number %d \n", id)
+	os.Chdir("/Users/bparli/tests/")
 	// Open the file.
-	f, _ := os.Open("/Users/bparli/tests.txt")
+	f, _ := os.Open("/Users/bparli/tests/tests.txt")
 	// Create a new Scanner for the file.
 	scanner := bufio.NewScanner(f)
 	// Loop over all lines in the file and print them.

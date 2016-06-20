@@ -90,7 +90,7 @@ func Load() *Args {
 	if args.Cluster == "" || args.Cluster == "False" {
 		cluster = false
 		peers = []string{}
-	} else {
+	} else if args.Cluster == "True" {
 		cluster = true
 		peers = []string{args.Nodes.Peer1, args.Nodes.Peer2}
 	}

@@ -33,12 +33,13 @@ type Queue struct {
 	head       *Node
 	tail       *Node
 	args       *loadArgs.Args //program arguments
+	gh         *hashes.Gh
 }
 
 //InitializeQueue global LRU
-func InitializeQueue(cap int, maxMem int64, maxDisk int64, args *loadArgs.Args) *Queue {
-	new := &Queue{totalFiles: cap, currFiles: 0, diskCap: maxDisk, currDisk: 0,
-		memCap: maxMem, currMem: 0, head: nil, tail: nil,
+func InitializeQueue(args *loadArgs.Args) *Queue {
+	new := &Queue{totalFiles: args.TotalFiles, currFiles: 0, diskCap: args.DiskCap, currDisk: 0,
+		memCap: args.MemCap, currMem: 0, head: nil, tail: nil,
 		args: args}
 	return new
 }
@@ -78,9 +79,8 @@ func (lru *Queue) evict() {
 	lru.currMem += currT.size
 	lru.currDisk += currT.size
 
-	hashes.Lhash.Lock.Lock()
-	delete(hashes.Lhash.Hash, currT.Bucket+currT.dirPath+currT.Fname) //remove from local hash table
-	hashes.Lhash.Lock.Unlock()
+	go lru.gh.RemoveFromGH(currT.dirPath+currT.Fname, currT.Bucket, lru.args.LocalName, true)
+
 	return
 }
 
@@ -120,9 +120,6 @@ func (lru *Queue) moveToHead(move *Node) {
 func (lru *Queue) Add(bucket string, dirPath string, fname string, size int64, inmem bool, data []byte) (*Node, error) {
 	//add node to LRU queue and evict if already full
 	_, queued := lru.Retrieve(fname)
-	//println(lru.currDisk, lru.currMem)
-	//fmt.Println(queued, lru.currFiles, lru.totalFiles)
-
 	if queued == true {
 		return nil, nil
 	}
@@ -145,11 +142,8 @@ func (lru *Queue) Add(bucket string, dirPath string, fname string, size int64, i
 		}
 
 	}
-	hashes.Lhash.Lock.Lock()
-	hashes.Lhash.Hash[bucket+dirPath+fname] = 1 //add to local hash table
-	hashes.Lhash.Lock.Unlock()
 
-	//go hashes.UpdatePeers(peers, fkey, bucketName, localName)
+	go lru.gh.AddToGH(dirPath+fname, bucket, lru.args.LocalName, true)
 
 	if lru.currFiles == 0 {
 		lru.head = new
