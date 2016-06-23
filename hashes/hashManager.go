@@ -28,8 +28,8 @@ func globalHashMan(w http.ResponseWriter, r *http.Request) {
 }
 
 //HashMan listens for updates from peers
-func HashMan() {
+func HashMan(port string) {
 	router := mux.NewRouter() //.StrictSlash(true)
 	router.HandleFunc("/", globalHashMan)
-	http.ListenAndServe(":9080", router)
+	http.ListenAndServe(":"+port, router)
 }

@@ -11,7 +11,7 @@ import (
 
 //Gh is the Global Hash struct
 type Gh struct {
-	Hash  map[string]map[string]int
+	Hash  map[string]string
 	Mutex *sync.RWMutex
 	args  *loadArgs.Args
 }
@@ -21,47 +21,45 @@ var Ghash *Gh
 
 //InitGH to initialize global hash from peers
 func InitGH(args *loadArgs.Args) {
-	newHash := make(map[string]map[string]int)
+	newHash := make(map[string]string) //hash is a map of file keys (bucket+fkey), mapped to a peer
 	Ghash = &Gh{Hash: newHash, Mutex: &sync.RWMutex{}, args: args}
 }
 
 //AddToGH adds a new record to the GH
 func (h *Gh) AddToGH(fkey string, bucket string, peer string, send bool) {
 	h.Mutex.Lock()
-	p, ok := h.Hash[peer]
-	if !ok {
-		p = make(map[string]int)
-		h.Hash[peer] = p
-	}
-	p[bucket+fkey] = 1
+	h.Hash[bucket+fkey] = peer //update the peer to contain the bucket+fkey value
 	h.Mutex.Unlock()
 
-	go h.sendUpdates(fkey, bucket, true)
+	if send == true {
+		h.sendUpdates(fkey, bucket, true)
+	}
 }
 
 //RemoveFromGH updates the GH table with the eviction
 func (h *Gh) RemoveFromGH(fkey string, bucket string, peer string, send bool) {
 	h.Mutex.Lock()
-	delete(h.Hash[peer], bucket+fkey)
+	delete(h.Hash, bucket+fkey)
 	h.Mutex.Unlock()
-	go h.sendUpdates(fkey, bucket, false)
+	if send == true {
+		h.sendUpdates(fkey, bucket, false)
+	}
 }
 
 //CheckGH to check if fkey is in any peer's store
 func (h *Gh) CheckGH(fkey string, bucket string) string {
 	h.Mutex.RLock()
-	for peer, check := range h.Hash {
-		_, ok := check[bucket+fkey]
-		if ok == true {
-			h.Mutex.RUnlock()
-			return peer
-		}
+	peer, ok := h.Hash[bucket+fkey]
+	if !ok {
+		h.Mutex.RUnlock()
+		return "None"
 	}
 	h.Mutex.RUnlock()
-	return "None"
+	return peer
 }
 
-//SendUpdates will update all peers on a new entry to the local cache
+//SendUpdates will update all peers on a new entry to the local cache.  update reflects whether
+//something should be in the hash table (true) or not (false)
 func (h *Gh) sendUpdates(fkey string, bucket string, update bool) {
 	upd := HashUpdate{peer: h.args.LocalName, bucketName: bucket, fkey: fkey, update: update}
 	data, errM := json.Marshal(upd)

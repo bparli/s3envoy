@@ -2,6 +2,7 @@ package loadArgs
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -19,6 +20,7 @@ type Args struct {
 	Peers          []string
 	LocalName      string
 	Cluster        bool
+	HashPort       string
 }
 
 type argsInput struct {
@@ -28,7 +30,8 @@ type argsInput struct {
 	DiskCap        string `json:"DiskCap"`
 	MaxMemFileSize string `json:"MaxMemFileSize"`
 	LocalName      string `json:"LocalName"`
-	Cluster        string `json:"cluster"`
+	Cluster        string `json:"Cluster"`
+	HashPort       string `json:"HashPort"`
 	Nodes          struct {
 		Peer1 string `json:"Node1"`
 		Peer2 string `json:"Node2"`
@@ -36,8 +39,9 @@ type argsInput struct {
 }
 
 //Load function to load config file and return struct with args
-func Load() *Args {
-	configFile, err := os.Open("/Users/bparli/go/bin/config.json")
+func Load(conf string) *Args {
+
+	configFile, err := os.Open(conf)
 	defer configFile.Close()
 	if err != nil {
 		log.Fatal(err)
@@ -52,6 +56,7 @@ func Load() *Args {
 	var maxMemFileSize string
 	var peers []string
 	var cluster bool
+	var hashPort string
 
 	if args.LocalPath == "" {
 		localPath = "/Users/bparli/tmp"
@@ -87,6 +92,12 @@ func Load() *Args {
 	}
 	maxMemFileSize2, _ := bytefmt.ToBytes(maxMemFileSize)
 
+	if args.HashPort == "" {
+		hashPort = "9080"
+	} else {
+		hashPort = args.HashPort
+	}
+
 	if args.Cluster == "" || args.Cluster == "False" {
 		cluster = false
 		peers = []string{}
@@ -98,6 +109,9 @@ func Load() *Args {
 	new := &Args{LocalPath: localPath,
 		TotalFiles: totalFiles, MemCap: int64(memCap2),
 		DiskCap: int64(diskCap2), MaxMemFileSize: int64(maxMemFileSize2),
-		Peers: peers, LocalName: args.LocalName, Cluster: cluster}
+		Peers: peers, LocalName: args.LocalName, Cluster: cluster,
+		HashPort: hashPort}
+
+	fmt.Println("Config file Args:", new)
 	return new
 }
