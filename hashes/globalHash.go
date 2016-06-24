@@ -68,7 +68,7 @@ func (h *Gh) sendUpdates(fkey string, bucket string, update string) {
 			log.Fatal(errM)
 		}
 		buff := bytes.NewBuffer(data)
-		fmt.Println(h.args.Peers)
+		fmt.Println(h.args.Peers[peer])
 		req, err := http.NewRequest("POST", "http://"+h.args.Peers[peer], buff)
 		req.Header.Set("Content-Type", "application/json")
 		client := &http.Client{}
