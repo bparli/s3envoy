@@ -24,18 +24,19 @@ type Args struct {
 }
 
 type argsInput struct {
-	LocalPath      string `json:"LocalPath"`
-	TotalFiles     string `json:"TotalFiles"`
-	MemCap         string `json:"MemCap"`
-	DiskCap        string `json:"DiskCap"`
-	MaxMemFileSize string `json:"MaxMemFileSize"`
-	LocalName      string `json:"LocalName"`
-	Cluster        string `json:"Cluster"`
-	HashPort       string `json:"HashPort"`
-	Nodes          struct {
-		Peer1 string `json:"Node1"`
-		Peer2 string `json:"Node2"`
-	} `json:"Nodes"`
+	LocalPath      string   `json:"LocalPath"`
+	TotalFiles     string   `json:"TotalFiles"`
+	MemCap         string   `json:"MemCap"`
+	DiskCap        string   `json:"DiskCap"`
+	MaxMemFileSize string   `json:"MaxMemFileSize"`
+	LocalName      string   `json:"LocalName"`
+	Cluster        string   `json:"Cluster"`
+	HashPort       string   `json:"HashPort"`
+	Peers          []string `json:"Peers"`
+	// Nodes          struct {
+	// 	Peer1 string `json:"Node1"`
+	// 	Peer2 string `json:"Node2"`
+	// } `json:"Nodes"`
 }
 
 //Load function to load config file and return struct with args
@@ -54,7 +55,7 @@ func Load(conf string) *Args {
 	var memCap string
 	var diskCap string
 	var maxMemFileSize string
-	var peers []string
+	//var peers []string
 	var cluster bool
 	var hashPort string
 	var localName string
@@ -107,20 +108,15 @@ func Load(conf string) *Args {
 
 	if args.Cluster == "" || args.Cluster == "False" {
 		cluster = false
-		peers = []string{}
+		//peers = []string{}
 	} else if args.Cluster == "True" {
 		cluster = true
-		if args.Nodes.Peer1 != "" {
-			peers = []string{args.Nodes.Peer1}
-		} else {
-			peers = []string{args.Nodes.Peer2}
-		}
 	}
 
 	new := &Args{LocalPath: localPath,
 		TotalFiles: totalFiles, MemCap: int64(memCap2),
 		DiskCap: int64(diskCap2), MaxMemFileSize: int64(maxMemFileSize2),
-		Peers: peers, LocalName: localName, Cluster: cluster,
+		Peers: args.Peers, LocalName: localName, Cluster: cluster,
 		HashPort: hashPort}
 
 	fmt.Println("Config file Args:", new)
