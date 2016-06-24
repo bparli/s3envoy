@@ -17,7 +17,7 @@ func putWork(line string, port string) {
 	fmt.Print("PUT File" + line)
 	defer data.Close()
 	fname := line[1:len(line)]
-	req, err := http.NewRequest("PUT", "http://localhost:"+port+"/nitro-junk"+fname, data)
+	req, err := http.NewRequest("PUT", "http://localhost:"+port+"/nitro-junk/"+fname, data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func putWork(line string, port string) {
 func getWork(line string, port string) {
 	fname := line[1:len(line)]
 	fmt.Print("GET File" + line)
-	resp, err := http.Get("http://localhost:" + port + "/nitro-junk" + fname)
+	resp, err := http.Get("http://localhost:" + port + "/nitro-junk/" + fname)
 	if err != nil {
 		fmt.Printf("Error downloading %s", line)
 	}

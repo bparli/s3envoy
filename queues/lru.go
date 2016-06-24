@@ -1,7 +1,6 @@
 package queues
 
 import (
-	"fmt"
 	"os"
 	"s3envoy/hashes"
 	"s3envoy/loadArgs"
@@ -57,9 +56,12 @@ func (lru *Queue) Retrieve(fkey string, bucket string) (*Node, bool) {
 	if lru.currFiles == 0 {
 		return nil, false
 	}
+	//fmt.Println("Search for File", fkey, bucket)
 	tmp := lru.getHead()
 	for i := 0; i < lru.currFiles-1; i++ {
+		//fmt.Println("CHECK File", tmp.Fkey, tmp.Bucket)
 		if tmp.Fkey == fkey && tmp.Bucket == bucket {
+			//fmt.Println("File FOUND", tmp.Fkey)
 			lru.moveToHead(tmp)
 			return tmp, true
 		}
@@ -80,7 +82,7 @@ func (lru *Queue) evict() {
 	lru.currDisk += currT.size
 
 	if lru.args.Cluster == true {
-		go hashes.Ghash.RemoveFromGH(currT.Fkey, currT.Bucket, lru.args.LocalName, true)
+		go hashes.Ghash.RemoveFromGH(currT.Fkey, currT.Bucket, true)
 	}
 
 	return
@@ -92,7 +94,7 @@ func (lru *Queue) moveToHead(move *Node) {
 	if tmp.Fkey == move.Fkey {
 		return
 	}
-	fmt.Println("move to head", move.Fkey)
+	//fmt.Println("move to head", move.Fkey)
 
 	//if node in queue find it and move it to head, then clean up linked list
 	if lru.currFiles > 1 {

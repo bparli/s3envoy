@@ -3,6 +3,7 @@ package hashes
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"s3envoy/loadArgs"
@@ -28,28 +29,27 @@ func InitGH(args *loadArgs.Args) {
 //AddToGH adds a new record to the GH
 func (h *Gh) AddToGH(fkey string, bucket string, peer string, send bool) {
 	h.Mutex.Lock()
-	h.Hash[bucket+fkey] = peer //update the peer to contain the bucket+fkey value
+	h.Hash[bucket+"/"+fkey] = peer //update the peer to contain the bucket+fkey value
 	h.Mutex.Unlock()
-
 	if send == true {
-		h.sendUpdates(fkey, bucket, true)
+		h.sendUpdates(fkey, bucket, "true")
 	}
 }
 
 //RemoveFromGH updates the GH table with the eviction
-func (h *Gh) RemoveFromGH(fkey string, bucket string, peer string, send bool) {
+func (h *Gh) RemoveFromGH(fkey string, bucket string, send bool) {
 	h.Mutex.Lock()
-	delete(h.Hash, bucket+fkey)
+	delete(h.Hash, bucket+"/"+fkey)
 	h.Mutex.Unlock()
 	if send == true {
-		h.sendUpdates(fkey, bucket, false)
+		go h.sendUpdates(fkey, bucket, "false")
 	}
 }
 
 //CheckGH to check if fkey is in any peer's store
 func (h *Gh) CheckGH(fkey string, bucket string) string {
 	h.Mutex.RLock()
-	peer, ok := h.Hash[bucket+fkey]
+	peer, ok := h.Hash[bucket+"/"+fkey]
 	if !ok {
 		h.Mutex.RUnlock()
 		return "None"
@@ -60,18 +60,22 @@ func (h *Gh) CheckGH(fkey string, bucket string) string {
 
 //SendUpdates will update all peers on a new entry to the local cache.  update reflects whether
 //something should be in the hash table (true) or not (false)
-func (h *Gh) sendUpdates(fkey string, bucket string, update bool) {
-	upd := HashUpdate{peer: h.args.LocalName, bucketName: bucket, fkey: fkey, update: update}
-	data, errM := json.Marshal(upd)
-	if errM != nil {
-		log.Fatal(errM)
-	}
-	buff := bytes.NewBuffer(data)
-
-	for peer := range h.Hash {
-		_, errReq := http.NewRequest("POST", peer, buff)
-		if errReq != nil {
-			log.Fatal(errReq)
+func (h *Gh) sendUpdates(fkey string, bucket string, update string) {
+	for peer := range h.args.Peers {
+		upd := &HashUpdate{Peer: h.args.LocalName, BucketName: bucket, Fkey: fkey, Update: update}
+		data, errM := json.Marshal(upd)
+		if errM != nil {
+			log.Fatal(errM)
 		}
+		buff := bytes.NewBuffer(data)
+		fmt.Println(h.args.Peers)
+		req, err := http.NewRequest("POST", "http://"+h.args.Peers[peer], buff)
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
 	}
 }

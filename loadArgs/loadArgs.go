@@ -57,11 +57,12 @@ func Load(conf string) *Args {
 	var peers []string
 	var cluster bool
 	var hashPort string
+	var localName string
 
 	if args.LocalPath == "" {
-		localPath = "/Users/bparli/tmp"
+		localPath = "/Users/bparli/tmp/"
 	} else {
-		localPath = args.LocalPath
+		localPath = args.LocalPath + "/"
 	}
 
 	if args.TotalFiles == "" {
@@ -69,6 +70,12 @@ func Load(conf string) *Args {
 	} else {
 		qsize, _ := strconv.Atoi(args.TotalFiles)
 		totalFiles = qsize
+	}
+
+	if args.LocalName == "" {
+		localName = "127.0.0.1:9081"
+	} else {
+		localName = args.LocalName
 	}
 
 	if args.MemCap == "" {
@@ -93,7 +100,7 @@ func Load(conf string) *Args {
 	maxMemFileSize2, _ := bytefmt.ToBytes(maxMemFileSize)
 
 	if args.HashPort == "" {
-		hashPort = "9080"
+		hashPort = "9081"
 	} else {
 		hashPort = args.HashPort
 	}
@@ -103,13 +110,17 @@ func Load(conf string) *Args {
 		peers = []string{}
 	} else if args.Cluster == "True" {
 		cluster = true
-		peers = []string{args.Nodes.Peer1, args.Nodes.Peer2}
+		if args.Nodes.Peer1 != "" {
+			peers = []string{args.Nodes.Peer1}
+		} else {
+			peers = []string{args.Nodes.Peer2}
+		}
 	}
 
 	new := &Args{LocalPath: localPath,
 		TotalFiles: totalFiles, MemCap: int64(memCap2),
 		DiskCap: int64(diskCap2), MaxMemFileSize: int64(maxMemFileSize2),
-		Peers: peers, LocalName: args.LocalName, Cluster: cluster,
+		Peers: peers, LocalName: localName, Cluster: cluster,
 		HashPort: hashPort}
 
 	fmt.Println("Config file Args:", new)
