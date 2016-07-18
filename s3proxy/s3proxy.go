@@ -270,10 +270,10 @@ func main() {
 
 	var err error
 	memberlistConfig := memberlist.DefaultLocalConfig()
-	//memberlistConfig.BindPort = *memberPort
-	args.Members, err = memberlist.Create(memberlistConfig)
-	// args.Members.LocalNode().Port = uint16(*memberPort)
+	localIP := strings.Split(args.LocalName, ":")[0]
+	memberlistConfig.AdvertiseAddr = localIP
 
+	args.Members, err = memberlist.Create(memberlistConfig)
 	if err != nil {
 		log.Errorln("Failed to create memberlist: " + err.Error())
 	}
@@ -281,8 +281,8 @@ func main() {
 	// Join an existing cluster by specifying at least one known member.
 	var memberIPs []string
 	for _, peer := range args.Peers {
-		peerIP := strings.Split(peer, ":")
-		memberIPs = append(memberIPs, peerIP[0])
+		peerIP := strings.Split(peer, ":")[0]
+		memberIPs = append(memberIPs, peerIP)
 	}
 	_, err = args.Members.Join(memberIPs)
 	if err != nil {
