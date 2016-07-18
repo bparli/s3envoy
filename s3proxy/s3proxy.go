@@ -284,7 +284,7 @@ func main() {
 		peerIP := strings.Split(peer, ":")
 		memberIPs = append(memberIPs, peerIP[0])
 	}
-	_, err = args.Members.Join(args.Peers)
+	_, err = args.Members.Join(memberIPs)
 	if err != nil {
 		log.Errorln("Failed to join cluster: " + err.Error())
 	}
