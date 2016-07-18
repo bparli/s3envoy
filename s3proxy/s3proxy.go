@@ -279,6 +279,11 @@ func main() {
 	}
 
 	// Join an existing cluster by specifying at least one known member.
+	var memberIPs []string
+	for _, peer := range args.Peers {
+		peerIP := strings.Split(peer, ":")
+		memberIPs = append(memberIPs, peerIP[0])
+	}
 	_, err = args.Members.Join(args.Peers)
 	if err != nil {
 		log.Errorln("Failed to join cluster: " + err.Error())
