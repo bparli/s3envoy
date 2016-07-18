@@ -94,7 +94,6 @@ func (lru *Queue) moveToHead(move *Node) {
 	if tmp.Fkey == move.Fkey {
 		return
 	}
-	//fmt.Println("move to head", move.Fkey)
 
 	//if node in queue find it and move it to head, then clean up linked list
 	if lru.currFiles > 1 {

@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,11 +13,13 @@ import (
 	"strings"
 	"sync"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
+	"github.com/Nitro/memberlist"
 	"github.com/gorilla/mux"
 )
 
@@ -32,28 +33,28 @@ type AppError struct {
 	Code    int
 }
 
-func s3Download(bucketName string, dirPath string, fname string, args *loadArgs.Args) (file *os.File, numBytes int64, err *AppError) {
+func s3Download(bucketName string, dirPath string, fname string, args *loadArgs.Args) (file *os.File, numBytes int64, Apperr *AppError) {
 
 	localPath := args.LocalPath + bucketName + "/" + dirPath
-	errD := os.MkdirAll(localPath, 0755)
-	if errD != nil {
-		fmt.Println(errD, "Could not create local Directories")
-		return nil, 0, &AppError{errD, "Could not create local Directories", 500}
+	err := os.MkdirAll(localPath, 0755)
+	if err != nil {
+		log.Errorln(err, "Could not create local Directories")
+		return nil, 0, &AppError{err, "Could not create local Directories", 500}
 	}
-	file, errF := os.Create(localPath + fname)
-	if errF != nil {
-		fmt.Println(errD, "Could not create local File")
-		return nil, 0, &AppError{errF, "Could not create local File", 500}
+	file, err = os.Create(localPath + fname)
+	if err != nil {
+		log.Errorln(err, "Could not create local File")
+		return nil, 0, &AppError{err, "Could not create local File", 500}
 	}
 	downloader := s3manager.NewDownloader(session.New(&aws.Config{Region: aws.String("us-west-1")}))
-	numBytes, errDown := downloader.Download(file,
+	numBytes, err = downloader.Download(file,
 		&s3.GetObjectInput{
 			Bucket: aws.String(bucketName),
 			Key:    aws.String(dirPath + fname),
 		})
-	if errDown != nil {
-		fmt.Println(errD)
-		return nil, 0, &AppError{errD, "Could not Dowload from S3", 500}
+	if err != nil {
+		log.Errorln(err)
+		return nil, 0, &AppError{err, "Could not Dowload from S3", 500}
 	}
 	return file, numBytes, nil
 }
@@ -79,32 +80,46 @@ func s3Upload(bucketName string, fkey string, localFname string, numBytes int64)
 		},
 	}
 	svc := s3.New(session.New(&aws.Config{Region: aws.String("us-west-1")}))
-	_, errU := svc.PutObject(params)
+	resp, errU := svc.PutObject(params)
 	if errU != nil {
 		return &AppError{errU, "Could not Upload to S3", 500}
 	}
-	//fmt.Printf("file uploaded to s3, %s \n", resp)
+	log.Infoln("file uploaded to s3, %s \n", resp)
 	return nil
 }
 
-func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName string, dirPath string, args *loadArgs.Args) *AppError {
-	//fmt.Println(args.LocalPath + bucketName + "/" + dirPath + fname)
+func CheckFileInPeerNode(fkey string, bucketName string, args *loadArgs.Args) (bool, string) {
+	res := "None"
+	res = hashes.Ghash.CheckGH(fkey, bucketName)
+	if res == "None" {
+		return false, ""
+	}
+	resIP := strings.Split(res, ":")
+	for _, member := range args.Members.Members() {
+		if string(member.Addr) == resIP[0] {
+			return true, res
+		}
+	}
+	return false, ""
+}
 
+func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName string, dirPath string, args *loadArgs.Args) *AppError {
 	mutex.Lock()
 	node, avail := lru.Retrieve(dirPath+fname, bucketName)
 	mutex.Unlock()
 
 	if avail == false {
-		//fmt.Println("File not in local FS")
+		log.Debugln("File not in local FS")
 
 		//if in cluster mode, check if file is in Global Hash table
-		res := "None"
+		var check bool
+		var res string
 		if args.Cluster == true {
-			res = hashes.Ghash.CheckGH(dirPath+fname, bucketName)
-			//fmt.Println(res)
+			check, res = CheckFileInPeerNode(dirPath+fname, bucketName, args)
 		}
-		if res == "None" {
-			//fmt.Println("File not in local FS or Global Hash, download from S3")
+
+		if check == false {
+			log.Debugln("File not in local FS or Global Hash, download from S3")
 			file, numBytes, errD := s3Download(bucketName, dirPath, fname, args)
 			defer file.Close()
 			if errD != nil {
@@ -126,14 +141,13 @@ func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 			}
 			http.ServeFile(w, r, args.LocalPath+bucketName+"/"+dirPath+fname)
 		} else { //if in Global Hash then redirt to that host
-			fmt.Print("File in Global Hash, Redirect client to Peer", res)
+			log.Debugln("File in Global Hash, Redirect client to Peer", res)
 			http.Redirect(w, r, res, 307)
 		}
 
 	} else {
-		//fmt.Println("File IS in local FS")
+		log.Debugln("File IS in local FS")
 		if node.Inmem == true {
-			//fmt.Println("File in local Mem", node.Fkey)
 			mutex.RLock()
 			http.ServeContent(w, r, node.Fkey, node.ModTime, node.MemFile)
 			mutex.RUnlock()
@@ -141,7 +155,7 @@ func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 			http.ServeFile(w, r, args.LocalPath+bucketName+"/"+dirPath+fname)
 		}
 	}
-	//fmt.Printf("Request for %s in %s \n", dirPath+fname, bucketName)
+	log.Debugln("Request for %s in %s \n", dirPath+fname, bucketName)
 	return nil
 }
 
@@ -154,7 +168,6 @@ func s3GetHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *
 	bucketName := splits[0]
 	dirPath := splits[1]
 	err := s3Get(w, r, fname, bucketName, dirPath, args)
-	//fmt.Println(args.LocalPath+bucketName+"/"+dirPath+fname, err)
 	if err != nil {
 		http.Error(w, err.Message, 500)
 	}
@@ -170,8 +183,6 @@ func uploader(bucketName string, fkey string, localFname string, numBytes int64,
 
 func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName string, dirPath string, args *loadArgs.Args) *AppError {
 	//key is the filename and full path.  Create a local file
-
-	//fmt.Println(args.LocalPath + bucketName + "/" + dirPath + fname)
 
 	localPath := args.LocalPath + bucketName + "/" + dirPath
 	errD := os.MkdirAll(localPath, 0755)
@@ -189,15 +200,13 @@ func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 	}
 	file.Close()
 
-	fmt.Println("Test Add to GH", args.Cluster, dirPath+fname, bucketName, args.LocalName)
 	//new thread for background S3 upload
 	results := make(chan int, 1)
 	go uploader(bucketName, dirPath+fname, localPath+fname, numBytes, 1, results)
-	//go uploader(bucketName, dirPath+fname, localPath+fname, numBytes)
 
-	fmt.Println(args.Cluster)
+	log.Debugln(args.Cluster)
 	if args.Cluster == true {
-		fmt.Println("Add to GH", dirPath+fname, bucketName, args.LocalName)
+		log.Debugln("Add to GH", dirPath+fname, bucketName, args.LocalName)
 		go hashes.Ghash.AddToGH(dirPath+fname, bucketName, args.LocalName, true)
 	}
 
@@ -217,7 +226,7 @@ func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 	}
 	//wait for s3 upload to finish
 	<-results
-	fmt.Fprintf(w, "File uploaded successfully : ")
+	log.Infoln(w, "File uploaded successfully : ")
 
 	return nil
 }
@@ -233,19 +242,22 @@ func s3PutHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *
 	dirPath := splits[1]
 	err := s3Put(w, r, fname, bucketName, dirPath, args)
 	if err != nil {
-		fmt.Println("Error in PUT", args.LocalPath+bucketName+"/"+dirPath+fname, err)
+		log.Errorln("Error in PUT", args.LocalPath+bucketName+"/"+dirPath+fname, err)
 		http.Error(w, err.Message, 500)
 	}
 	return nil
 }
 
 func main() {
+	log.SetLevel(log.DebugLevel)
+
 	var conf = flag.String("config", "/Users/bparli/go/bin/config.json", "location of config.json")
 	var port = flag.String("port", "8080", "server port number")
+	//var memberPort = flag.Int("memberPort", 7980, "Memberlist port number")
 	flag.Parse()
+
 	//load arguments from config.json
 	args := loadArgs.Load(*conf)
-	//args.LocalName = args.LocalName + *port
 
 	//initialize the local LRU queue
 	lru = queues.InitializeQueue(args)
@@ -254,6 +266,22 @@ func main() {
 	if args.Cluster == true {
 		hashes.InitGH(args)
 		go hashes.HashMan(args.HashPort)
+	}
+
+	var err error
+	memberlistConfig := memberlist.DefaultLocalConfig()
+	//memberlistConfig.BindPort = *memberPort
+	args.Members, err = memberlist.Create(memberlistConfig)
+	// args.Members.LocalNode().Port = uint16(*memberPort)
+
+	if err != nil {
+		log.Errorln("Failed to create memberlist: " + err.Error())
+	}
+
+	// Join an existing cluster by specifying at least one known member.
+	_, err = args.Members.Join(args.Peers)
+	if err != nil {
+		log.Errorln("Failed to join cluster: " + err.Error())
 	}
 
 	//use mux router and handler functions with the args struct being passed in

@@ -3,10 +3,11 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 func putWork(line string, port string) {
@@ -14,7 +15,7 @@ func putWork(line string, port string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print("PUT File" + line)
+	log.Debugln("PUT File" + line)
 	defer data.Close()
 	fname := line[1:len(line)]
 	req, err := http.NewRequest("PUT", "http://localhost:"+port+"/nitro-junk/"+fname, data)
@@ -35,7 +36,7 @@ func getWork(line string, port string) {
 	fmt.Print("GET File" + line)
 	resp, err := http.Get("http://localhost:" + port + "/nitro-junk/" + fname)
 	if err != nil {
-		fmt.Printf("Error downloading %s", line)
+		log.Errorln("Error downloading %s", line)
 	}
 	resp.Body.Close()
 }
@@ -51,7 +52,6 @@ func worker(port string, id int, results chan<- int) {
 	count := 1
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
 		if count%2 == 0 {
 			getWork(line, port)
 		} else {
@@ -78,5 +78,5 @@ func main() {
 		<-results1
 		<-results2
 	}
-	fmt.Println("Done!")
+	log.Debugln("Done!")
 }

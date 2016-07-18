@@ -2,10 +2,9 @@ package hashes
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 )
 
@@ -23,14 +22,13 @@ func globalHashMan(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("Update: ", update.Peer, update.BucketName, update.Fkey)
+	log.Debugln("Update: ", update.Peer, update.BucketName, update.Fkey)
 
 	if update.Update == "true" {
 		Ghash.AddToGH(update.Fkey, update.BucketName, update.Peer, false)
 	} else {
 		Ghash.RemoveFromGH(update.Fkey, update.BucketName, false)
 	}
-	//fmt.Fprintf(w, "Updated")
 }
 
 //HashMan listens for updates from peers

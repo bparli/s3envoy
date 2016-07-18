@@ -2,11 +2,11 @@ package loadArgs
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"os"
 	"strconv"
 
+	"github.com/Nitro/memberlist"
+	log "github.com/Sirupsen/logrus"
 	"github.com/pivotal-golang/bytefmt"
 )
 
@@ -21,6 +21,7 @@ type Args struct {
 	LocalName      string
 	Cluster        bool
 	HashPort       string
+	Members        *memberlist.Memberlist
 }
 
 type argsInput struct {
@@ -33,10 +34,6 @@ type argsInput struct {
 	Cluster        string   `json:"Cluster"`
 	HashPort       string   `json:"HashPort"`
 	Peers          []string `json:"Peers"`
-	// Nodes          struct {
-	// 	Peer1 string `json:"Node1"`
-	// 	Peer2 string `json:"Node2"`
-	// } `json:"Nodes"`
 }
 
 //Load function to load config file and return struct with args
@@ -45,7 +42,7 @@ func Load(conf string) *Args {
 	configFile, err := os.Open(conf)
 	defer configFile.Close()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	args := new(argsInput)
 	json.NewDecoder(configFile).Decode(args)
@@ -119,6 +116,6 @@ func Load(conf string) *Args {
 		Peers: args.Peers, LocalName: localName, Cluster: cluster,
 		HashPort: hashPort}
 
-	fmt.Println("Config file Args:", new)
+	log.Debugln("Config file Args:", new)
 	return new
 }

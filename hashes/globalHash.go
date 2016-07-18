@@ -3,11 +3,11 @@ package hashes
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	"s3envoy/loadArgs"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 //Gh is the Global Hash struct
@@ -68,7 +68,7 @@ func (h *Gh) sendUpdates(fkey string, bucket string, update string) {
 			log.Fatal(errM)
 		}
 		buff := bytes.NewBuffer(data)
-		fmt.Println(h.args.Peers[peer])
+		log.Debugln(h.args.Peers[peer])
 		req, err := http.NewRequest("POST", "http://"+h.args.Peers[peer], buff)
 		req.Header.Set("Content-Type", "application/json")
 		client := &http.Client{}
