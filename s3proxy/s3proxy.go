@@ -254,7 +254,6 @@ func main() {
 
 	var conf = flag.String("config", "/Users/bparli/go/bin/config.json", "location of config.json")
 	var port = flag.String("port", "8080", "server port number")
-	//var memberPort = flag.Int("memberPort", 7980, "Memberlist port number")
 	flag.Parse()
 
 	//load arguments from config.json

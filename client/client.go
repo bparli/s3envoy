@@ -75,17 +75,17 @@ func main() {
 	numThreads, _ := strconv.Atoi(os.Args[1])
 
 	results1 := make(chan int, numThreads)
-	results2 := make(chan int, numThreads)
+	//results2 := make(chan int, numThreads)
 
-	for w := 1; w <= numThreads; w += 2 {
+	for w := 1; w <= numThreads; w += 1 {
 		log.Debugln("Main Worker  Number %d \n", w)
 		go worker("10.20.20.119:8081", w, results1)
-		//go worker("172.16.46.179:8082", w+1, results2)
+		//go worker("172.16.46.180:8082", w+1, results2)
 	}
 
 	for a := 1; a <= numThreads; a++ {
 		<-results1
-		<-results2
+		//<-results2
 	}
 	log.Debugln("Done!")
 }

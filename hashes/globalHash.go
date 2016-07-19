@@ -28,6 +28,7 @@ func InitGH(args *loadArgs.Args) {
 
 //AddToGH adds a new record to the GH
 func (h *Gh) AddToGH(fkey string, bucket string, peer string, send bool) {
+	log.Debugln("Add to global hash", bucket, fkey)
 	h.Mutex.Lock()
 	h.Hash[bucket+"/"+fkey] = peer //update the peer to contain the bucket+fkey value
 	h.Mutex.Unlock()
