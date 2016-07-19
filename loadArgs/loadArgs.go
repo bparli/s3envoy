@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/Nitro/memberlist"
 	log "github.com/Sirupsen/logrus"
@@ -34,6 +35,16 @@ type argsInput struct {
 	Cluster        string   `json:"Cluster"`
 	HashPort       string   `json:"HashPort"`
 	Peers          []string `json:"Peers"`
+}
+
+func (args *Args) CheckMemberAlive(node string) bool {
+	nodeIP := strings.Split(node, ":")[0]
+	for _, member := range args.Members.Members() {
+		if string(member.Addr) == nodeIP {
+			return true
+		}
+	}
+	return false
 }
 
 //Load function to load config file and return struct with args
@@ -91,7 +102,7 @@ func Load(conf string) *Args {
 	diskCap2, _ := bytefmt.ToBytes(diskCap)
 
 	if args.MaxMemFileSize == "" {
-		maxMemFileSize = "10M"
+		maxMemFileSize = "1M"
 	} else {
 		maxMemFileSize = args.MaxMemFileSize
 	}

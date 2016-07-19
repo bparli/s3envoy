@@ -33,6 +33,18 @@ type AppError struct {
 	Code    int
 }
 
+func CheckFileInPeerNode(fkey string, bucketName string, args *loadArgs.Args) (bool, string) {
+	res := "None"
+	res = hashes.Ghash.CheckGH(fkey, bucketName)
+	if res == "None" {
+		return false, ""
+	}
+	if args.CheckMemberAlive(res) {
+		return true, res
+	}
+	return false, ""
+}
+
 func s3Download(bucketName string, dirPath string, fname string, args *loadArgs.Args) (file *os.File, numBytes int64, Apperr *AppError) {
 
 	localPath := args.LocalPath + bucketName + "/" + dirPath
@@ -80,27 +92,12 @@ func s3Upload(bucketName string, fkey string, localFname string, numBytes int64)
 		},
 	}
 	svc := s3.New(session.New(&aws.Config{Region: aws.String("us-west-1")}))
-	resp, errU := svc.PutObject(params)
+	_, errU := svc.PutObject(params)
 	if errU != nil {
 		return &AppError{errU, "Could not Upload to S3", 500}
 	}
-	log.Infoln("file uploaded to s3, %s \n", resp)
+	log.Infoln("file uploaded to s3")
 	return nil
-}
-
-func CheckFileInPeerNode(fkey string, bucketName string, args *loadArgs.Args) (bool, string) {
-	res := "None"
-	res = hashes.Ghash.CheckGH(fkey, bucketName)
-	if res == "None" {
-		return false, ""
-	}
-	resIP := strings.Split(res, ":")
-	for _, member := range args.Members.Members() {
-		if string(member.Addr) == resIP[0] {
-			return true, res
-		}
-	}
-	return false, ""
 }
 
 func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName string, dirPath string, args *loadArgs.Args) *AppError {
@@ -127,6 +124,7 @@ func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 			}
 			//if small enough then add to memory and disk.
 			if numBytes < args.MaxMemFileSize {
+				log.Debugln(args.MaxMemFileSize, numBytes)
 				d, errR := ioutil.ReadAll(file)
 				if errR != nil {
 					return &AppError{errR, "Could read from file", 500}
@@ -161,6 +159,7 @@ func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 
 func s3GetHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *AppError {
 	//get inputs from url and send to s3Get to download from S3.
+	log.Debugln(r.Method)
 	vars := mux.Vars(r)
 	fname := vars["fname"]
 	bucket := vars["bucket"]
@@ -204,7 +203,7 @@ func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 	results := make(chan int, 1)
 	go uploader(bucketName, dirPath+fname, localPath+fname, numBytes, 1, results)
 
-	log.Debugln(args.Cluster)
+	//log.Debugln(args.Cluster)
 	if args.Cluster == true {
 		log.Debugln("Add to GH", dirPath+fname, bucketName, args.LocalName)
 		go hashes.Ghash.AddToGH(dirPath+fname, bucketName, args.LocalName, true)
@@ -213,6 +212,7 @@ func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 	//add to local file queue
 	if numBytes < args.MaxMemFileSize { //if small enough then add to memory too
 		d, err := ioutil.ReadAll(r.Body)
+		defer r.Body.Close()
 		if err != nil {
 			return &AppError{errC, "Could not Read from local File", 500}
 		}
@@ -225,8 +225,8 @@ func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 		mutex.Unlock()
 	}
 	//wait for s3 upload to finish
-	<-results
-	log.Infoln(w, "File uploaded successfully : ")
+	//<-results
+	//log.Infoln("File uploaded successfully")
 
 	return nil
 }
@@ -235,6 +235,7 @@ func s3PutHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *
 	//get inputs from url and send to s3Put to upload to S3.  All PUT requests get written
 	//to S3 and local even if they already exists
 	vars := mux.Vars(r)
+	log.Debugln(r.Method, r)
 	fname := vars["fname"]
 	bucket := vars["bucket"]
 	splits := strings.SplitN(bucket, "/", 2)
@@ -291,13 +292,13 @@ func main() {
 
 	//use mux router and handler functions with the args struct being passed in
 	router := mux.NewRouter() //.StrictSlash(true)
-	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fname:[a-zA-Z0-9-\\.]*$}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fname:[a-zA-Z0-9-_\\.]*$}", func(w http.ResponseWriter, r *http.Request) {
+		s3PutHandler(w, r, args)
+	}).Methods("PUT", "POST")
+	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*[\\/]+}{fname:[a-zA-Z0-9-_\\.]*$}", func(w http.ResponseWriter, r *http.Request) {
+		//router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*[\\/]+}{fname:[.]*$}", func(w http.ResponseWriter, r *http.Request) {
 		s3GetHandler(w, r, args)
 	}).Methods("GET")
-
-	router.HandleFunc("/{bucket:[a-zA-Z0-9-\\.\\/]*\\/}{fname:[a-zA-Z0-9-\\.]*$}", func(w http.ResponseWriter, r *http.Request) {
-		s3PutHandler(w, r, args)
-	}).Methods("PUT")
 
 	http.ListenAndServe(":"+*port, router)
 }

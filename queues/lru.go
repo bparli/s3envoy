@@ -56,12 +56,9 @@ func (lru *Queue) Retrieve(fkey string, bucket string) (*Node, bool) {
 	if lru.currFiles == 0 {
 		return nil, false
 	}
-	//fmt.Println("Search for File", fkey, bucket)
 	tmp := lru.getHead()
 	for i := 0; i < lru.currFiles-1; i++ {
-		//fmt.Println("CHECK File", tmp.Fkey, tmp.Bucket)
 		if tmp.Fkey == fkey && tmp.Bucket == bucket {
-			//fmt.Println("File FOUND", tmp.Fkey)
 			lru.moveToHead(tmp)
 			return tmp, true
 		}
@@ -78,8 +75,8 @@ func (lru *Queue) evict() {
 	newT.next = nil
 	lru.tail = newT
 	lru.currFiles--
-	lru.currMem += currT.size
-	lru.currDisk += currT.size
+	lru.currMem -= currT.size
+	lru.currDisk -= currT.size
 
 	if lru.args.Cluster == true {
 		go hashes.Ghash.RemoveFromGH(currT.Fkey, currT.Bucket, true)
@@ -141,7 +138,7 @@ func (lru *Queue) Add(bucket string, fkey string, size int64, inmem bool, data [
 
 	//pop objects off the end of the queue if we need room
 	for {
-		if (lru.currMem+size) > lru.memCap || (lru.currDisk+size) > lru.diskCap {
+		if ((lru.currMem+size) > lru.memCap && inmem == true) || (lru.currDisk+size) > lru.diskCap {
 			lru.evict()
 		} else {
 			break

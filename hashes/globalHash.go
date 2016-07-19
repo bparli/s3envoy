@@ -61,21 +61,23 @@ func (h *Gh) CheckGH(fkey string, bucket string) string {
 //SendUpdates will update all peers on a new entry to the local cache.  update reflects whether
 //something should be in the hash table (true) or not (false)
 func (h *Gh) sendUpdates(fkey string, bucket string, update string) {
-	for peer := range h.args.Peers {
-		upd := &HashUpdate{Peer: h.args.LocalName, BucketName: bucket, Fkey: fkey, Update: update}
-		data, errM := json.Marshal(upd)
-		if errM != nil {
-			log.Fatal(errM)
+	for _, peer := range h.args.Peers {
+		if h.args.CheckMemberAlive(peer) {
+			upd := &HashUpdate{Peer: h.args.LocalName, BucketName: bucket, Fkey: fkey, Update: update}
+			data, errM := json.Marshal(upd)
+			if errM != nil {
+				log.Fatal(errM)
+			}
+			buff := bytes.NewBuffer(data)
+			log.Debugln(peer)
+			req, err := http.NewRequest("POST", "http://"+peer, buff)
+			req.Header.Set("Content-Type", "application/json")
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				panic(err)
+			}
+			defer resp.Body.Close()
 		}
-		buff := bytes.NewBuffer(data)
-		log.Debugln(h.args.Peers[peer])
-		req, err := http.NewRequest("POST", "http://"+h.args.Peers[peer], buff)
-		req.Header.Set("Content-Type", "application/json")
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			panic(err)
-		}
-		defer resp.Body.Close()
 	}
 }
