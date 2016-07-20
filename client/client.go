@@ -75,7 +75,6 @@ func getWork(line string, add string) {
 	log.Debugln("http://" + add + "/nitro-junk/" + fname)
 	resp, err := http.Get("http://" + add + "/nitro-junk" + fname)
 	//log.Debugln("Req Method:", resp.Request.Method)
-	log.Debugln("Req Method:", resp.Request.Method)
 	resp.Body.Close()
 	if err != nil {
 		log.Errorln("Error downloading %s", line)
@@ -109,11 +108,18 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 	numThreads, _ := strconv.Atoi(os.Args[1])
 
+	// results12 := make(chan int, 1)
+	// results14 := make(chan int, 1)
+	// go worker("10.20.20.119:8081", 12, results12)
+	// go worker("172.16.46.180:8082", 14, results14)
+	// <-results12
+	// <-results14
+
 	results1 := make(chan int, numThreads)
 	results2 := make(chan int, numThreads)
 
 	start := time.Now()
-	for w := 0; w <= numThreads; w += 2 {
+	for w := 1; w <= numThreads+1; w += 2 {
 		log.Debugln("Main Worker  Number %d \n", w)
 		go worker("10.20.20.119:8081", w, results1)
 		//go worker("s3-us-west-1.amazonaws.com", w, results1)
