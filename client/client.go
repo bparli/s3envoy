@@ -63,7 +63,7 @@ func worker(add string, id int, results chan<- int) {
 		if count%2 == 0 {
 			putWork(line, add)
 		} else {
-			putWork(line, add)
+			getWork(line, add)
 		}
 		count++
 	}

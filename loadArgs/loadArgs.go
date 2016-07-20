@@ -40,7 +40,8 @@ type argsInput struct {
 func (args *Args) CheckMemberAlive(node string) bool {
 	nodeIP := strings.Split(node, ":")[0]
 	for _, member := range args.Members.Members() {
-		if string(member.Addr) == nodeIP {
+		log.Debugln("check member:", member.Addr, nodeIP)
+		if member.Addr.String() == nodeIP {
 			return true
 		}
 	}

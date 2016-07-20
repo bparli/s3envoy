@@ -152,7 +152,7 @@ func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 			http.ServeFile(w, r, args.LocalPath+bucketName+"/"+dirPath+fname)
 		}
 	}
-	log.Debugln("Request for %s in %s \n", dirPath+fname, bucketName)
+	log.Debugln("Request for ", dirPath+fname, bucketName)
 	return nil
 }
 
