@@ -172,13 +172,12 @@ func s3GetHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *
 	return nil
 }
 
-func uploader(bucketName string, fkey string, localFname string, numBytes int64) *AppError {
-	//id int, results chan<- int
+func uploader(bucketName string, fkey string, localFname string, numBytes int64, id int, results chan<- int) *AppError {
 	err := s3Upload(bucketName, fkey, localFname, numBytes)
 	if err != nil {
 		log.Errorln("S3 upload Error:", err)
 	}
-	//results <- 1
+	results <- 1
 	return err
 }
 
@@ -202,9 +201,9 @@ func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 	file.Close()
 
 	//new thread for background S3 upload
-	//results := make(chan int, 1)
-	//go uploader(bucketName, dirPath+fname, localPath+fname, numBytes, 1, results)
-	go uploader(bucketName, dirPath+fname, localPath+fname, numBytes)
+	results := make(chan int, 1)
+	go uploader(bucketName, dirPath+fname, localPath+fname, numBytes, 1, results)
+	//go uploader(bucketName, dirPath+fname, localPath+fname, numBytes)
 
 	//log.Debugln(args.Cluster)
 	if args.Cluster == true {
@@ -228,8 +227,8 @@ func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 		mutex.Unlock()
 	}
 	//wait for s3 upload to finish
-	//<-results
-	//log.Infoln("File uploaded successfully")
+	<-results
+	log.Infoln("File uploaded successfully")
 	return nil
 }
 
