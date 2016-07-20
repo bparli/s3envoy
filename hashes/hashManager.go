@@ -22,7 +22,7 @@ func globalHashMan(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Debugln("Update: ", update.Peer, update.BucketName, update.Fkey)
+	log.Debugln("Update: ", update.Peer, update.BucketName, update.Fkey, update.Update)
 
 	if update.Update == "true" {
 		Ghash.AddToGH(update.Fkey, update.BucketName, update.Peer, false)

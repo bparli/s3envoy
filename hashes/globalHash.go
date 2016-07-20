@@ -62,8 +62,11 @@ func (h *Gh) CheckGH(fkey string, bucket string) string {
 //SendUpdates will update all peers on a new entry to the local cache.  update reflects whether
 //something should be in the hash table (true) or not (false)
 func (h *Gh) sendUpdates(fkey string, bucket string, update string) {
+	log.Debugln("Send update to peers")
 	for _, peer := range h.args.Peers {
-		if h.args.CheckMemberAlive(peer) {
+		log.Debugln("Check peer:", peer)
+		if h.args.CheckMemberAlive(peer) == true {
+			log.Debugln("Send update to peer:", peer)
 			upd := &HashUpdate{Peer: h.args.LocalName, BucketName: bucket, Fkey: fkey, Update: update}
 			data, errM := json.Marshal(upd)
 			if errM != nil {

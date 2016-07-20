@@ -124,7 +124,6 @@ func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 			}
 			//if small enough then add to memory and disk.
 			if numBytes < args.MaxMemFileSize {
-				log.Debugln(args.MaxMemFileSize, numBytes)
 				d, errR := ioutil.ReadAll(file)
 				if errR != nil {
 					return &AppError{errR, "Could read from file", 500}
@@ -159,7 +158,6 @@ func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 
 func s3GetHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *AppError {
 	//get inputs from url and send to s3Get to download from S3.
-	log.Debugln(r.Method)
 	vars := mux.Vars(r)
 	fname := vars["fname"]
 	bucket := vars["bucket"]
@@ -225,8 +223,8 @@ func s3Put(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 		mutex.Unlock()
 	}
 	//wait for s3 upload to finish
-	//<-results
-	//log.Infoln("File uploaded successfully")
+	<-results
+	log.Infoln("File uploaded successfully")
 
 	return nil
 }
@@ -235,7 +233,6 @@ func s3PutHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *
 	//get inputs from url and send to s3Put to upload to S3.  All PUT requests get written
 	//to S3 and local even if they already exists
 	vars := mux.Vars(r)
-	log.Debugln(r.Method, r)
 	fname := vars["fname"]
 	bucket := vars["bucket"]
 	splits := strings.SplitN(bucket, "/", 2)

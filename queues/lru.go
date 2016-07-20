@@ -5,6 +5,8 @@ import (
 	"s3envoy/hashes"
 	"s3envoy/loadArgs"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 //Node struct for each local file node
@@ -70,10 +72,13 @@ func (lru *Queue) Retrieve(fkey string, bucket string) (*Node, bool) {
 func (lru *Queue) evict() {
 	//evict current tail and adjust len -1 node to be new tail
 	currT := lru.getTail()
+
 	os.Remove(lru.args.LocalPath + currT.Fkey)
 	newT := currT.prev
 	newT.next = nil
-	lru.tail = newT
+	//currT.next = nil
+
+	lru.tail = currT.prev
 	lru.currFiles--
 	lru.currMem -= currT.size
 	lru.currDisk -= currT.size
@@ -138,7 +143,8 @@ func (lru *Queue) Add(bucket string, fkey string, size int64, inmem bool, data [
 
 	//pop objects off the end of the queue if we need room
 	for {
-		if ((lru.currMem+size) > lru.memCap && inmem == true) || (lru.currDisk+size) > lru.diskCap {
+		if ((lru.currMem+size > lru.memCap) && inmem == true) || (lru.currDisk+size) > lru.diskCap {
+			log.Debugln("Check evict state: ", fkey, inmem, lru.currMem+size, lru.memCap, lru.currDisk+size, lru.diskCap, lru.args.MaxMemFileSize)
 			lru.evict()
 		} else {
 			break
