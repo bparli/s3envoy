@@ -68,7 +68,7 @@ func (h *Gh) sendUpdates(fkey string, bucket string, update string) {
 			upd := &HashUpdate{Peer: h.args.LocalName, BucketName: bucket, Fkey: fkey, Update: update}
 			data, errM := json.Marshal(upd)
 			if errM != nil {
-				log.Fatal(errM)
+				log.Errorln(errM)
 			}
 			buff := bytes.NewBuffer(data)
 			log.Debugln(peer)
@@ -77,7 +77,7 @@ func (h *Gh) sendUpdates(fkey string, bucket string, update string) {
 			client := &http.Client{}
 			resp, err := client.Do(req)
 			if err != nil {
-				panic(err)
+				log.Errorln(err)
 			}
 			defer resp.Body.Close()
 		}

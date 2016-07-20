@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -63,10 +65,14 @@ func putWork(line string, add string, s3 bool) {
 		defer data.Close()
 		resp, err := http.Post("http://"+add+"/nitro-junk"+fname, "text/plain", data)
 		if err != nil {
-			panic(err)
+			log.Errorln(err)
+		} else {
+			io.Copy(ioutil.Discard, resp.Body)
+			resp.Body.Close()
+			log.Debugln("Req Method:", resp.Request.Method)
 		}
-		log.Debugln("Req Method:", resp.Request.Method)
-		resp.Body.Close()
+
+		return
 	}
 }
 
@@ -74,12 +80,13 @@ func getWork(line string, add string) {
 	fname := line[1:len(line)]
 	log.Debugln("http://" + add + "/nitro-junk/" + fname)
 	resp, err := http.Get("http://" + add + "/nitro-junk" + fname)
-	//log.Debugln("Req Method:", resp.Request.Method)
-	resp.Body.Close()
 	if err != nil {
 		log.Errorln("Error downloading %s", line)
+	} else {
+		log.Debugln("Req Method:", resp.Request.Method)
+		resp.Body.Close()
 	}
-
+	return
 }
 
 func worker(add string, id int, results chan<- int) {
@@ -119,14 +126,14 @@ func main() {
 	results2 := make(chan int, numThreads)
 
 	start := time.Now()
-	for w := 1; w <= numThreads+1; w += 2 {
+	for w := 0; w <= numThreads; w++ {
 		log.Debugln("Main Worker  Number %d \n", w)
 		go worker("10.20.20.119:8081", w, results1)
 		//go worker("s3-us-west-1.amazonaws.com", w, results1)
-		go worker("172.16.46.180:8082", w+1, results2)
+		go worker("172.16.46.180:8082", w, results2)
 	}
 
-	for a := 1; a <= numThreads; a++ {
+	for a := 0; a <= numThreads; a++ {
 		<-results1
 		<-results2
 	}
