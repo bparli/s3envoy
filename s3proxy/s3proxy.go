@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -246,6 +247,8 @@ func s3PutHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *
 		log.Errorln("Error in PUT", args.LocalPath+bucketName+"/"+dirPath+fname, err)
 		http.Error(w, err.Message, 500)
 	}
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "File Uploading")
 	return nil
 }
 
