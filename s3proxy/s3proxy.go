@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"runtime"
 	"s3envoy/hashes"
 	"s3envoy/loadArgs"
 	"s3envoy/queues"
@@ -253,6 +254,8 @@ func s3PutHandler(w http.ResponseWriter, r *http.Request, args *loadArgs.Args) *
 }
 
 func main() {
+	runtime.GOMAXPROCS(2)
+
 	log.SetLevel(log.DebugLevel)
 
 	var conf = flag.String("config", "/Users/bparli/go/bin/config.json", "location of config.json")
