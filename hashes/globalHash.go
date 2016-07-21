@@ -78,8 +78,9 @@ func (h *Gh) sendUpdates(fkey string, bucket string, update string) {
 			resp, err := client.Do(req)
 			if err != nil {
 				log.Errorln(err)
+			} else {
+				resp.Body.Close()
 			}
-			defer resp.Body.Close()
 		}
 	}
 }

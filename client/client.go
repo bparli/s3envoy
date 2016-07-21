@@ -51,7 +51,6 @@ func s3Upload(bucketName string, fkey string, localFname string) error {
 }
 
 func putWork(line string, add string, s3 bool) {
-
 	fname := line[1:len(line)]
 	log.Debugln("http://" + add + "/nitro-junk/" + fname)
 	if s3 {
@@ -90,7 +89,7 @@ func getWork(line string, add string) {
 }
 
 func worker(add string, id int, results chan<- int) {
-	log.Debugln("Worker  Number %d \n", id)
+	log.Debugln("Worker  Number", id)
 	os.Chdir("/Users/bparli/tests/")
 	// Open the file.
 	f, _ := os.Open("/Users/bparli/tests/tests.txt")
@@ -99,16 +98,26 @@ func worker(add string, id int, results chan<- int) {
 	// Loop over all lines in the file and print them.
 	count := 1
 	s3 := false
-	for scanner.Scan() {
-		line := scanner.Text()
-		if count%2 == 0 {
+
+	if id == 12 || id == 14 {
+		for scanner.Scan() {
+			line := scanner.Text()
 			putWork(line, add, s3)
-		} else {
-			getWork(line, add)
 		}
-		count++
+	} else {
+		for scanner.Scan() {
+			line := scanner.Text()
+			if count%2 == 0 {
+				putWork(line, add, s3)
+				getWork(line, add)
+			} else {
+				getWork(line, add)
+			}
+			count++
+		}
+		results <- 1
 	}
-	results <- 1
+
 	return
 }
 
@@ -116,24 +125,29 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 	numThreads, _ := strconv.Atoi(os.Args[1])
 
-	// results12 := make(chan int, 1)
-	// results14 := make(chan int, 1)
-	// go worker("10.20.20.119:8081", 12, results12)
-	// go worker("172.16.46.180:8082", 14, results14)
-	// <-results12
-	// <-results14
+	results12 := make(chan int, 1)
+	results14 := make(chan int, 1)
+	//go worker("10.20.20.119:8081", 12, results12)
+	//go worker("172.16.46.180:8082", 14, results14)
+	go worker("s3-us-west-1.amazonaws.com", 12, results12)
+	go worker("s3-us-west-1.amazonaws.com", 14, results14)
+
+	time.Sleep(5 * time.Second)
 
 	results1 := make(chan int, numThreads)
 	results2 := make(chan int, numThreads)
 
 	start := time.Now()
 	for w := 0; w < numThreads; w++ {
-		log.Debugln("Main Worker  Number %d \n", w)
-		go worker("10.20.20.119:8081", w, results1)
-		go worker("172.16.46.180:8082", w, results2)
-		// go worker("s3-us-west-1.amazonaws.com", w, results1)
-		// go worker("s3-us-west-1.amazonaws.com", w, results2)
+		log.Debugln("Main Worker  Number", w)
+		//go worker("10.20.20.119:8081", w, results1)
+		//go worker("172.16.46.180:8082", w, results2)
+		go worker("s3-us-west-1.amazonaws.com", w, results1)
+		go worker("s3-us-west-1.amazonaws.com", w, results2)
 	}
+
+	//<-results12
+	//<-results14
 
 	elapsed := time.Since(start)
 	for a := 0; a < numThreads; a++ {
