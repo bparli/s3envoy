@@ -141,7 +141,7 @@ func s3Get(w http.ResponseWriter, r *http.Request, fname string, bucketName stri
 			http.ServeFile(w, r, args.LocalPath+bucketName+"/"+dirPath+fname)
 		} else { //if in Global Hash then redirt to that host
 			log.Debugln("File in Global Hash, Redirect client to Peer", res)
-			http.Redirect(w, r, res, 307)
+			http.Redirect(w, r, res+"/"+bucketName+"/"+dirPath+fname, 307)
 		}
 
 	} else {
