@@ -58,10 +58,18 @@ func (lru *Queue) Retrieve(fkey string, bucket string) (*Node, bool) {
 	if lru.currFiles == 0 {
 		return nil, false
 	}
+	if lru.currFiles == 1 {
+		tmp := lru.getHead()
+		if tmp.Fkey == fkey && tmp.Bucket == bucket {
+			return tmp, true
+		}
+	}
+
 	tmp := lru.getHead()
 	for i := 0; i < lru.currFiles-1; i++ {
 		if tmp.Fkey == fkey && tmp.Bucket == bucket {
 			lru.moveToHead(tmp)
+			log.Debugln(fkey, "is in local cache", tmp)
 			return tmp, true
 		}
 		tmp = tmp.next
