@@ -261,7 +261,7 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 
 	var conf = flag.String("config", "/Users/bparli/go/bin/config.json", "location of config.json")
-	var port = flag.String("port", "8080", "server port number")
+	var port = flag.String("port", "8081", "server port number")
 	flag.Parse()
 
 	//load arguments from config.json
