@@ -21,6 +21,7 @@ type Args struct {
 	Peers          []string
 	LocalName      string
 	Cluster        bool
+	ClientPort     string
 	HashPort       string
 	Members        *memberlist.Memberlist
 }
@@ -33,6 +34,7 @@ type argsInput struct {
 	MaxMemFileSize string   `json:"MaxMemFileSize"`
 	LocalName      string   `json:"LocalName"`
 	Cluster        string   `json:"Cluster"`
+	ClientPort     string   `json:"ClientPort"`
 	HashPort       string   `json:"HashPort"`
 	Peers          []string `json:"Peers"`
 }
@@ -66,8 +68,9 @@ func Load(conf string) *Args {
 	var maxMemFileSize string
 	//var peers []string
 	var cluster bool
-	var hashPort string
+	var clientPort string
 	var localName string
+	var hashPort string
 
 	if args.LocalPath == "" {
 		localPath = "/Users/bparli/tmp/"
@@ -109,10 +112,16 @@ func Load(conf string) *Args {
 	}
 	maxMemFileSize2, _ := bytefmt.ToBytes(maxMemFileSize)
 
-	if args.HashPort == "" {
-		hashPort = "9081"
+	if args.ClientPort == "" {
+		clientPort = "8081"
 	} else {
-		hashPort = args.HashPort
+		clientPort = args.ClientPort
+	}
+
+	if args.HashPort == "" {
+		clientPort = "9081"
+	} else {
+		clientPort = args.ClientPort
 	}
 
 	if args.Cluster == "" || args.Cluster == "False" {
@@ -126,7 +135,7 @@ func Load(conf string) *Args {
 		TotalFiles: totalFiles, MemCap: int64(memCap2),
 		DiskCap: int64(diskCap2), MaxMemFileSize: int64(maxMemFileSize2),
 		Peers: args.Peers, LocalName: localName, Cluster: cluster,
-		HashPort: hashPort}
+		ClientPort: clientPort, HashPort: hashPort}
 
 	log.Debugln("Config file Args:", new)
 	return new
