@@ -14,7 +14,7 @@ Prerequisites include:
 * [Pivotal's byte converter](github.com/pivotal-golang/bytefmt)
 
 ##S3Envoy 
-The idea behind S3Envoy is to provide a HTTP-based service just like S3 so clients will not need to be altered.  The service accepts GET/PUT requests just like S3.  It uses an LRU queue to maintain the cache and helper threads to handle background interfacing with S3 itself.
+The idea behind S3Envoy is to provide a HTTP-based service just like S3 so clients will not need to be altered.  The service accepts GET/PUT requests just like S3.  It uses an LRU queue to maintain the cache and helper threads to handle background interfacing with S3 itself.  Objects are stored on disk for persistence and in-memory for fast retrieval.
 
 <img src="https://github.com/bparli/s3envoy/blob/master/png/S3Envoy.png" width="200" height="250">
 
@@ -23,7 +23,7 @@ A cluster mode setting is also available in which S3Envoy peers maintain their o
 The Global hash Table is used redirect requests to peers if they are able to service a request from their local store.  So each server keeps its local LRU Queue in addition to its view of the Global Hash Table
 
 ###Other Settings
-S3Envoy can be tuned via a config.json file.  Additional parameters include memory settings, maximum file size to keep in memory, maximum disk size, and the list of Peers.
+S3Envoy can be tuned via a config.json file.  Additional parameters include memory settings, maximum file size to keep in memory, maximum disk capacity, and the list of Peers.
 
 ##GET Example
 1. Check LRU Queue – serve if found and move to head
@@ -45,7 +45,7 @@ S3Envoy can be tuned via a config.json file.  Additional parameters include memo
 ##Takeways
 To verify the initial motivation, some experiements were run with a hacked together client load testing program (to install this package simply run "go install s3envoy/client" from your go environment).  This program performed GETs and PUTs from a directory of 4300+ files of various types (jars, yml, pdf, txt, etc) and sizes (avg: 650 KB, max: 635 MB, Min: 2 KB).  First prime the pump a bit; 2 Threads with continuous PUT Requests.  Then in a 2:1 GET:PUT ratio, series of requests from 2, 4, and 6 worker threads.  Results of this toy experiemnt are below.
 
-| #S3Envoy Processes  | #Load Worker Threads  | S3Envoy Completion Time (S) | S3Envoy Completion Time (S) | % Improvement |
+| #S3Envoy Processes  | #Load Worker Threads  | S3Envoy Completion Time (S) |      S3 Completion Time (S) | % Improvement |
 |:-------------------:|:---------------------:|:---------------------------:|:---------------------------:|:-------------:|
 | 2                   |  2                    |   63                        |         189                 |    66%        |
 | 2                   |  4                    |   58                        |         210                 |    72%        |
