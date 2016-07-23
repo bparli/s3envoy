@@ -1,0 +1,10 @@
+{
+    "LocalPath": "/Users/bparli/tmp",
+    "TotalFiles": "30",
+    "MemCap": "3G",
+    "MaxMemFileSize": "300M",
+    "DiskCap": "10G",
+    "Cluster": "True",
+    "LocalName": "10.20.20.119:9081",
+    "Peers": ["172.16.46.180:9081"]
+}
