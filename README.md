@@ -13,9 +13,9 @@ Prerequisites include:
 * [AWS SDK](https://github.com/aws/aws-sdk-go)
 * [Pivotal's byte converter](github.com/pivotal-golang/bytefmt)
 
-<img src="https://github.com/bparli/s3envoy/blob/master/png/S3Envoy.png" width="200" height="200">
+<img src="https://github.com/bparli/s3envoy/blob/master/png/S3Envoy.png" width="200" height="250">
 
-<img src="https://github.com/bparli/s3envoy/blob/master/png/GET.png" width="200" height="200">
+<img src="https://github.com/bparli/s3envoy/blob/master/png/GET.png" width="200" height="250">
 
-<img src="https://github.com/bparli/s3envoy/blob/master/png/PUT.png" width="200" height="200">
+<img src="https://github.com/bparli/s3envoy/blob/master/png/PUT.png" width="200" height="250">
 
