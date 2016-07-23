@@ -14,8 +14,8 @@ Prerequisites include:
 * [Pivotal's byte converter](github.com/pivotal-golang/bytefmt)
 
 
-![S3Envoy](png/S3Envoy.png)
+![S3Envoy](png/S3Envoy.png = 100x100)
 
-![S3EnvoyGET](png/GET.png)
+![S3EnvoyGET](png/GET.png = 100x100)
 
-![S3EnvoyPUT](png/PUT.png)
+![S3EnvoyPUT](png/PUT.png = 100x100)
