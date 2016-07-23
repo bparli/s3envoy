@@ -13,6 +13,7 @@ Prerequisites include:
 * [AWS SDK](https://github.com/aws/aws-sdk-go)
 * [Pivotal's byte converter](github.com/pivotal-golang/bytefmt)
 
+<img src="https://github.com/bparli/s3envoy/blob/master/png/S3Envoy.png" width="100" height="100">
 
 ![S3Envoy](png/S3Envoy.png = 100x100)
 
