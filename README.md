@@ -23,7 +23,7 @@ A cluster mode setting is also available in which S3Envoy peers maintain their o
 The Global hash Table is used redirect requests to peers if they are able to service a request from their local store.  So each server keeps its local LRU Queue in addition to its view of the Global Hash Table
 
 ###Other Settings
-S3Envoy can be tuned via a config.json file.  Additional parameters include memory settings, maximum file size to keep in memory, maximum disk size, and the list of Peers.
+S3Envoy can be tuned via a config.json file.  Additional parameters include memory settings, maximum file size to keep in memory, maximum disk capacity, and the list of Peers.
 
 ##GET Example
 1. Check LRU Queue – serve if found and move to head
