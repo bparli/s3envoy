@@ -14,4 +14,8 @@ Prerequisites include:
 * [Pivotal's byte converter](github.com/pivotal-golang/bytefmt)
 
 
-![sensu ](../images/sensu.png)
+![S3Envoy](~/Desktop/S3Envoy.png)
+
+![S3EnvoyGET](~/Desktop/GET.png)
+
+![S3EnvoyPUT](~/Desktop/PUT.png)
