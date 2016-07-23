@@ -14,7 +14,7 @@ Prerequisites include:
 * [Pivotal's byte converter](github.com/pivotal-golang/bytefmt)
 
 ##S3Envoy 
-The idea behind S3Envoy is to provide a HTTP-based service just like S3 so clients will not need to be altered.  The service accepts GET/PUT requests just like S3.  It uses an LRU queue to maintain the cache and helper threads to handle background interfacing with S3 itself.
+The idea behind S3Envoy is to provide a HTTP-based service just like S3 so clients will not need to be altered.  The service accepts GET/PUT requests just like S3.  It uses an LRU queue to maintain the cache and helper threads to handle background interfacing with S3 itself.  Objects are stored on disk for persistence and in-memory for fast retrieval.
 
 <img src="https://github.com/bparli/s3envoy/blob/master/png/S3Envoy.png" width="200" height="250">
 
