@@ -13,9 +13,32 @@ Prerequisites include:
 * [AWS SDK](https://github.com/aws/aws-sdk-go)
 * [Pivotal's byte converter](github.com/pivotal-golang/bytefmt)
 
+##S3Envoy 
+The idea behind S3Envoy is to provide a HTTP-based service just like S3 so clients will not need to be altered.  The service accepts GET/PUT requests just like S3.  It uses an LRU queue to maintain the cache and helper threads to handle background interfacing with S3 itself.
+
 <img src="https://github.com/bparli/s3envoy/blob/master/png/S3Envoy.png" width="200" height="250">
 
+###Cluster Mode
+A cluster mode setting is also available in which S3Envoy peers maintain their own view of a global hash table.   
+The Global hash Table is used redirect requests to peers if they are able to service a request from their local store.  So each server keeps its local LRU Queue in addition to its view of the Global Hash Table
+
+###Other Settings
+S3Envoy can be tuned via a config.json file.  Additional parameters include memory settings, maximum file size to keep in memory, maximum disk size, and the list of Peers.
+
+##GET Example
+1. Check LRU Queue – serve if found and move to head
+2. Check local Global Hash Table – redirect if found
+3. If not found GET from AWS S3 
+4. Store locally, update local LRU Queue, local view of Global Hash Table
+5. Helper thread to notify peers of update to Global Hash
+ 
 <img src="https://github.com/bparli/s3envoy/blob/master/png/GET.png" width="200" height="250">
+
+##PUT Example
+1. Store locally – if small enough for in-mem, and also on disk (persistent)
+2. Update LRU Queue – move to head
+3. Update local Global Hash Table and send update to peers (helper thread)
+4. PUT to S3 with Helper Thread
 
 <img src="https://github.com/bparli/s3envoy/blob/master/png/PUT.png" width="200" height="250">
 
