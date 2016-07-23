@@ -42,3 +42,11 @@ S3Envoy can be tuned via a config.json file.  Additional parameters include memo
 
 <img src="https://github.com/bparli/s3envoy/blob/master/png/PUT.png" width="200" height="250">
 
+##Takeways
+To verify the initial motivation, some experiements were run with a hacked together client load testing program (to install this package simply run "go install s3envoy/client" from your go environment).  This program performed GETs and PUTs from a directory of 4300+ files of various types (jars, yml, pdf, txt, etc) and sizes (avg: 650 KB, max: 635 MB, Min: 2 KB).  First prime the pump a bit; 2 Threads with continuous PUT Requests.  Then in a 2:1 GET:PUT ratio, series of requests from 2, 4, and 6 worker threads.  Results of this toy experiemnt are below.
+
+| #S3Envoy Processes  | #Load Worker Threads  | S3Envoy Completion Time (S) | S3Envoy Completion Time (S) | % Improvement |
+|:-------------------:|:---------------------:|:---------------------------:|:---------------------------:|:-------------:|
+| 2                   |  2                    |   63                        |         189                 |    66%        |
+| 2                   |  4                    |   58                        |         210                 |    72%        |
+| 2                   |  6                    |    97                       |         221                 |    56%        |
