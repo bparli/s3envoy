@@ -119,9 +119,9 @@ func Load(conf string) *Args {
 	}
 
 	if args.HashPort == "" {
-		clientPort = "9081"
+		hashPort = "9081"
 	} else {
-		clientPort = args.ClientPort
+		hashPort = args.HashPort
 	}
 
 	if args.Cluster == "" || args.Cluster == "False" {
